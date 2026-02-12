@@ -7,3 +7,6 @@ ai integrated pillbox
 
 ### activate for windows only -->
 -   venv\Scripts\activate
+
+### install requirements.txt
+-   pip install -r requirements.txt
