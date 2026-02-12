@@ -10,3 +10,10 @@ ai integrated pillbox
 
 ### install requirements.txt
 -   pip install -r requirement.txt
+
+
+# uvx commands -->
+
+uvx ruff check .
+uvx ruff format .
+uvx ruff check . --select I --fix
