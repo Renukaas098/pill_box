@@ -1,10 +1,6 @@
 import logging
+
 from src.service.face_recognition import RecognitionService
-
-from src.utils.logger import setup_logger
-
-setup_logger()
-
 
 # ------------------------------------------------------
 # Logger setup
@@ -38,4 +34,4 @@ def recognition_handler(image_path, db_path):
 
     logger.info("Recognition handler completed")
 
-    return result
+    return result["label"]

@@ -1,16 +1,16 @@
-from src.utils.config import ConfigLoader
 from src.service.embedding import EmbeddingService
+from src.utils.config import ConfigLoader
 
 
 def handler():
 
     config = ConfigLoader()
 
-    dataset_path = config.get_data_dir()
-    output_path = config.get_embedding_output()
+    face_data = config.get_faces_output()
+    embedding_path = config.get_embedding_output()
 
     service = EmbeddingService()
-    service.run(dataset_path, output_path)
+    service.run(face_data, embedding_path)
 
 
 if __name__ == "__main__":

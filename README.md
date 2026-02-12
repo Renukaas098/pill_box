@@ -17,3 +17,16 @@ ai integrated pillbox
 uvx ruff check .
 uvx ruff format .
 uvx ruff check . --select I --fix
+
+
+# First run detection
+
+python main.py detect
+
+# second embed
+
+python main.py embed
+
+# final testing 
+
+python main.py recognize --image "src\dataset\Alvaro Morte\Alvaro Morte1_152.jpg"

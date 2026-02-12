@@ -1,10 +1,11 @@
+import logging
 import os
 import time
-import logging
+
 import numpy as np
+from mtcnn.mtcnn import MTCNN
 from numpy import asarray
 from PIL import Image
-from mtcnn.mtcnn import MTCNN
 
 from src.utils.logger import setup_logger
 
@@ -45,12 +46,12 @@ def extract_face(filename, required_size=(160, 160)):
             logger.warning(f"No face detected → {filename}")
             return None
 
-        face = max(faces, key=lambda f: f['box'][2] * f['box'][3])
+        face = max(faces, key=lambda f: f["box"][2] * f["box"][3])
 
-        x, y, w, h = face['box']
+        x, y, w, h = face["box"]
         x, y = abs(x), abs(y)
 
-        face_pixels = pixels[y:y+h, x:x+w]
+        face_pixels = pixels[y : y + h, x : x + w]
         face_image = Image.fromarray(face_pixels).resize(required_size)
 
         return asarray(face_image)
@@ -68,11 +69,9 @@ def load_faces(directory):
     faces = []
 
     for filename in os.listdir(directory):
-
         path = os.path.join(directory, filename)
 
         if os.path.isfile(path):
-
             face = extract_face(path)
 
             if face is not None:
@@ -92,7 +91,6 @@ def load_dataset(directory):
     logger.info(f"Starting dataset load → {directory}")
 
     for subdir in os.listdir(directory):
-
         path = os.path.join(directory, subdir)
 
         if not os.path.isdir(path):

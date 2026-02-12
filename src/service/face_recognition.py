@@ -1,14 +1,10 @@
-from src.utils.logger import setup_logger
 import logging
 
-
 import numpy as np
-from numpy.linalg import norm
 from keras_facenet import FaceNet
-from PIL import Image
 from mtcnn.mtcnn import MTCNN
-
-setup_logger()
+from numpy.linalg import norm
+from PIL import Image
 
 logger = logging.getLogger("RecognitionService")
 logger.setLevel(logging.INFO)
@@ -23,7 +19,6 @@ if not logger.handlers:
 
 
 class RecognitionService:
-
     def __init__(self, embedding_db_path):
 
         logger.info("Loading embedding database...")
@@ -32,9 +27,7 @@ class RecognitionService:
         self.known_embeddings = data["arr_0"]
         self.known_labels = data["arr_1"]
 
-        logger.info(
-            f"Database loaded → {self.known_embeddings.shape}"
-        )
+        logger.info(f"Database loaded → {self.known_embeddings.shape}")
 
         self.detector = MTCNN()
         self.embedder = FaceNet()
@@ -60,7 +53,7 @@ class RecognitionService:
             x, y, w, h = faces[0]["box"]
             x, y = abs(x), abs(y)
 
-            face = img[y:y+h, x:x+w]
+            face = img[y : y + h, x : x + w]
             face = Image.fromarray(face).resize(size)
 
             return np.asarray(face)
@@ -78,21 +71,14 @@ class RecognitionService:
         face = self.extract_face(image_path)
 
         if face is None:
-            return {
-                "label": "No face",
-                "score": 0
-            }
+            return {"label": "No face", "score": 0}
 
         embedding = self.embedder.embeddings([face])[0]
 
         best_score = -1
         best_label = "Unknown"
 
-        for known_emb, label in zip(
-            self.known_embeddings,
-            self.known_labels
-        ):
-
+        for known_emb, label in zip(self.known_embeddings, self.known_labels):
             score = self.cosine_similarity(embedding, known_emb)
 
             if score > best_score:
@@ -102,10 +88,7 @@ class RecognitionService:
         if best_score < threshold:
             best_label = "Unknown"
 
-        result = {
-            "label": best_label,
-            "score": float(best_score)
-        }
+        result = {"label": best_label, "score": float(best_score)}
 
         logger.info(f"Result → {result}")
 

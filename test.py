@@ -1,5 +1,6 @@
-from src.utils.logger import setup_logger
 import logging
+
+from src.utils.logger import setup_logger
 
 setup_logger()
 

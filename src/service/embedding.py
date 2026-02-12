@@ -1,12 +1,8 @@
-import time
 import logging
+import time
+
 import numpy as np
 from keras_facenet import FaceNet
-
-from src.utils.logger import setup_logger
-
-setup_logger()
-
 
 # ------------------------------------------------------
 # Logger setup
@@ -24,7 +20,6 @@ if not logger.handlers:
 
 
 class EmbeddingService:
-
     def __init__(self):
         logger.info("Loading FaceNet embedder...")
         self.embedder = FaceNet()
@@ -37,8 +32,8 @@ class EmbeddingService:
 
         data = np.load(dataset_path, allow_pickle=True)
 
-        faces = data['arr_0']
-        labels = data['arr_1']
+        faces = data["arr_0"]
+        labels = data["arr_1"]
 
         logger.info("Dataset loaded successfully")
         logger.info(f"Faces: {faces.shape}")
@@ -56,28 +51,17 @@ class EmbeddingService:
         embeddings = self.embedder.embeddings(faces)
 
         logger.info(f"Embeddings shape: {embeddings.shape}")
-        logger.info(
-            f"Embedding generation completed in {time.time() - start:.2f} sec"
-        )
+        logger.info(f"Embedding generation completed in {time.time() - start:.2f} sec")
 
         return embeddings
 
     # --------------------------------------------------
 
-    def save_embeddings(
-        self,
-        output_path,
-        embeddings,
-        labels
-    ):
+    def save_embeddings(self, output_path, embeddings, labels):
 
         logger.info(f"Saving embeddings → {output_path}")
 
-        np.savez_compressed(
-            output_path,
-            embeddings,
-            labels
-        )
+        np.savez_compressed(output_path, embeddings, labels)
 
         logger.info("Embeddings saved successfully")
 
@@ -91,10 +75,6 @@ class EmbeddingService:
 
         embeddings = self.generate_embeddings(faces)
 
-        self.save_embeddings(
-            output_path,
-            embeddings,
-            labels
-        )
+        self.save_embeddings(output_path, embeddings, labels)
 
         logger.info("Embedding pipeline completed")
