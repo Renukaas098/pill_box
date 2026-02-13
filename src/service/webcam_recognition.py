@@ -5,6 +5,8 @@ import numpy as np
 from keras_facenet import FaceNet
 from numpy.linalg import norm
 from ultralytics import YOLO
+import time
+from PIL import Image
 
 from src.utils.config import ConfigLoader
 
@@ -66,41 +68,54 @@ class WebcamRecognition:
 
         logger.info("Webcam recognition started — press Q to exit")
 
+        last_process_time = 0
+        process_interval = 0.25  # 4 FPS
+
         while True:
+
             ret, frame = cap.read()
             if not ret:
                 break
 
-            results = self.detector(frame, conf=self.conf_thres, verbose=False)
+            current_time = time.time()
 
-            if results[0].boxes is not None:
-                boxes = results[0].boxes.xyxy.cpu().numpy()
+            # Only process every interval
+            if current_time - last_process_time >= process_interval:
 
-                for box in boxes:
-                    x1, y1, x2, y2 = map(int, box)
+                last_process_time = current_time
 
-                    face = frame[y1:y2, x1:x2]
+                results = self.detector(frame, conf=self.conf_thres, verbose=False)
 
-                    if face.size == 0:
-                        continue
+                if results[0].boxes is not None:
 
-                    face = cv2.resize(face, (160, 160))
-                    face = face[:, :, ::-1]  # BGR → RGB
+                    boxes = results[0].boxes.xyxy.cpu().numpy()
 
-                    label, score = self.recognize_face(face)
+                    for box in boxes:
 
-                    text = f"{label} ({score:.2f})"
+                        x1, y1, x2, y2 = map(int, box)
 
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(
-                        frame,
-                        text,
-                        (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.6,
-                        (0, 255, 0),
-                        2,
-                    )
+                        face = frame[y1:y2, x1:x2]
+
+                        if face.size == 0:
+                            continue
+
+                        face = cv2.resize(face, (160, 160))
+                        face = face[:, :, ::-1]
+
+                        label, score = self.recognize_face(face)
+
+                        text = f"{label} ({score:.2f})"
+
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        cv2.putText(
+                            frame,
+                            text,
+                            (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            (0, 255, 0),
+                            2,
+                        )
 
             cv2.imshow("YOLO Face Recognition", frame)
 
@@ -109,3 +124,4 @@ class WebcamRecognition:
 
         cap.release()
         cv2.destroyAllWindows()
+
