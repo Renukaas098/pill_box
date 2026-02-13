@@ -4,6 +4,7 @@ import logging
 from src.handler.embedding import handler as embedding_handler
 from src.handler.face_detection import face_detection_handler
 from src.handler.face_recognition import recognition_handler
+from src.handler.webcam_recognition import webcam_recognition_handler
 from src.utils.config import ConfigLoader
 from src.utils.logger import setup_logger
 
@@ -18,7 +19,9 @@ def main():
     parser = argparse.ArgumentParser(description="Face Pipeline Controller")
 
     parser.add_argument(
-        "mode", choices=["detect", "embed", "recognize"], help="Pipeline mode to run"
+        "mode",
+        choices=["detect", "embed", "recognize", "webcam"],
+        help="Pipeline mode to run",
     )
 
     parser.add_argument("--image", help="Image path for recognition")
@@ -51,6 +54,12 @@ def main():
 
         recognized_name = recognition_handler(args.image, db_path)
         logger.info(f"Recognized name: {recognized_name}")
+
+    # --------------------------------------------------
+    # Webcam recognition pipeline
+    # --------------------------------------------------
+    elif args.mode == "webcam":
+        webcam_recognition_handler()
 
 
 # ------------------------------------------------------

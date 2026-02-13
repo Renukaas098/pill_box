@@ -1,13 +1,16 @@
 import cv2
 from ultralytics import YOLO
+
 # Load model
-model = YOLO("models\yolov8s-face-lindevs.pt")
+from src.utils.config import ConfigLoader
+
+yolo_model_path = ConfigLoader().get_yolo_model_path()
+model = YOLO(yolo_model_path)
 
 # Confidence threshold
 CONF_THRES = 0.8
 
 cap = cv2.VideoCapture(0)
-
 
 
 while True:
@@ -20,7 +23,7 @@ while True:
 
     if results[0].boxes is not None:
         boxes = results[0].boxes.xyxy.cpu().numpy()
-      
+
         scores = results[0].boxes.conf.cpu().numpy()
 
         for box, score in zip(boxes, scores):
@@ -35,7 +38,6 @@ while True:
             if face_crop.size == 0:
                 continue
 
-
             # Draw box
             cv2.rectangle(frame, (x1, y1), (x2, y2), (57, 255, 20), 1)
             cv2.putText(
@@ -45,14 +47,13 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
                 (34, 34, 178),
-                2
+                2,
             )
 
     cv2.imshow("YOLOv8 Face Detection", frame)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
 cap.release()
 cv2.destroyAllWindows()
-

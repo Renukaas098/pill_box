@@ -3,11 +3,18 @@ import os
 import time
 
 import numpy as np
-from mtcnn.mtcnn import MTCNN
 from numpy import asarray
 from PIL import Image
+from ultralytics import YOLO
 
+from src.utils.config import ConfigLoader
 from src.utils.logger import setup_logger
+
+# Load YOLO face detector once
+yolo_model_path = ConfigLoader().get_yolo_model_path()
+detector = YOLO(yolo_model_path)
+
+CONF_THRES = 0.8
 
 setup_logger()
 # ------------------------------------------------------
@@ -28,7 +35,6 @@ if not logger.handlers:
 # ------------------------------------------------------
 # Face detector (load once)
 # ------------------------------------------------------
-detector = MTCNN()
 
 
 # ------------------------------------------------------
@@ -40,18 +46,32 @@ def extract_face(filename, required_size=(160, 160)):
         image = Image.open(filename).convert("RGB")
         pixels = asarray(image)
 
-        faces = detector.detect_faces(pixels)
+        # YOLO expects BGR → convert
+        frame = pixels[:, :, ::-1]
 
-        if not faces:
+        results = detector(frame, conf=CONF_THRES, verbose=False)
+
+        if not results or results[0].boxes is None:
             logger.warning(f"No face detected → {filename}")
             return None
 
-        face = max(faces, key=lambda f: f["box"][2] * f["box"][3])
+        boxes = results[0].boxes.xyxy.cpu().numpy()
+        scores = results[0].boxes.conf.cpu().numpy()
 
-        x, y, w, h = face["box"]
-        x, y = abs(x), abs(y)
+        # Pick highest confidence face
+        best_idx = np.argmax(scores)
+        x1, y1, x2, y2 = map(int, boxes[best_idx])
 
-        face_pixels = pixels[y : y + h, x : x + w]
+        # Clamp bounds
+        h, w, _ = frame.shape
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+
+        face_pixels = pixels[y1:y2, x1:x2]
+
+        if face_pixels.size == 0:
+            return None
+
         face_image = Image.fromarray(face_pixels).resize(required_size)
 
         return asarray(face_image)

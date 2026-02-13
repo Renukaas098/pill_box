@@ -27,6 +27,10 @@ python main.py detect
 
 python main.py embed
 
-# final testing 
+# testing with image path
 
 python main.py recognize --image "src\dataset\Alvaro Morte\Alvaro Morte1_152.jpg"
+
+# Testing with webcam
+
+python main.py webcam

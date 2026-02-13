@@ -10,6 +10,9 @@ class ConfigLoader:
         # paths
         # -------------------------------
         self.dataset_dir = os.path.join(base, "dataset")
+        self.yolo_model_path = os.path.join(
+            base, "ai", "models", "yolo", "yolov8s-face-lindevs.pt"
+        )
 
         self.faces_output = os.path.join(
             base, "processed", "faces", "faces-only-dataset.npz"
@@ -51,3 +54,6 @@ class ConfigLoader:
 
     def get_embedding_output(self):
         return self.embedding_output
+
+    def get_yolo_model_path(self):
+        return self.yolo_model_path

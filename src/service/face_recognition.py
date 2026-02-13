@@ -2,12 +2,17 @@ import logging
 
 import numpy as np
 from keras_facenet import FaceNet
-from mtcnn.mtcnn import MTCNN
 from numpy.linalg import norm
 from PIL import Image
+from ultralytics import YOLO
+
+from src.utils.config import ConfigLoader
 
 logger = logging.getLogger("RecognitionService")
 logger.setLevel(logging.INFO)
+
+yolo_model_path = ConfigLoader().get_yolo_model_path()
+
 
 if not logger.handlers:
     handler = logging.StreamHandler()
@@ -29,7 +34,9 @@ class RecognitionService:
 
         logger.info(f"Database loaded → {self.known_embeddings.shape}")
 
-        self.detector = MTCNN()
+        self.detector = YOLO(yolo_model_path)
+
+        self.CONF_THRES = 0.8
         self.embedder = FaceNet()
 
     # --------------------------------------------------
@@ -44,16 +51,33 @@ class RecognitionService:
 
         try:
             img = np.array(Image.open(filename).convert("RGB"))
-            faces = self.detector.detect_faces(img)
 
-            if not faces:
+            # YOLO expects BGR
+            frame = img[:, :, ::-1]
+
+            results = self.detector(frame, conf=self.CONF_THRES, verbose=False)
+
+            if not results or results[0].boxes is None:
                 logger.warning("No face detected")
                 return None
 
-            x, y, w, h = faces[0]["box"]
-            x, y = abs(x), abs(y)
+            boxes = results[0].boxes.xyxy.cpu().numpy()
+            scores = results[0].boxes.conf.cpu().numpy()
 
-            face = img[y : y + h, x : x + w]
+            # choose highest confidence face
+            best_idx = np.argmax(scores)
+            x1, y1, x2, y2 = map(int, boxes[best_idx])
+
+            # clamp bounds
+            h, w, _ = frame.shape
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
+
+            face = img[y1:y2, x1:x2]
+
+            if face.size == 0:
+                return None
+
             face = Image.fromarray(face).resize(size)
 
             return np.asarray(face)
