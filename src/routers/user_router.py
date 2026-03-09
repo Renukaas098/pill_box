@@ -67,6 +67,9 @@ async def register_user(
 
         faces_added = embedding_service.register_user_embeddings(name, faces)
 
+    
+        embedding_service.reload_embeddings()
+
         return {
             "success": True,
             "user": name,
@@ -78,7 +81,7 @@ async def register_user(
         logger.error(str(e))
 
         return {"success": False, "error": str(e)}
-
+    
 @router.delete("/user/{name}")
 def delete_user(name: str):
 

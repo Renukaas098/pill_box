@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.routers.recognition_router import router as recognition_router
 from src.routers.user_router import router as user_router
+from src.routers.device_router import router as device_router
 
 
 logging.basicConfig(
@@ -25,7 +26,7 @@ app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 # routers
 app.include_router(recognition_router)
 app.include_router(user_router)
-
+app.include_router(device_router)
 
 @app.get("/")
 def root():

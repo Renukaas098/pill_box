@@ -40,3 +40,11 @@ DELETE /user/{name}
 POST   /reload_embeddings
 GET    /detection_log
 GET    /model_status
+
+
+/device/register
+/device/list
+/device/wifi-scan
+/device/wifi-setup
+/device/action
+

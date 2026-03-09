@@ -1,0 +1,89 @@
+<div id="status-bar" class="status-bar">
+System ready
+</div>
+
+<div class="dashboard-grid">
+
+<!-- CAMERA -->
+
+<div class="card">
+
+<h2>Live Recognition</h2>
+
+<div class="camera-container">
+<video id="video" autoplay></video>
+<canvas id="overlay"></canvas>
+</div>
+
+<div class="controls">
+<button class="primary" onclick="startStream()">Start</button>
+<button class="primary" onclick="stopStream()">Stop</button>
+<button class="primary" onclick="captureFace()">Capture Face</button>
+</div>
+
+</div>
+
+
+<!-- DETECTION TABLE -->
+
+<div class="card">
+
+<h2>Detected People</h2>
+
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Confidence</th>
+</tr>
+</thead>
+
+<tbody id="recognition-table"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<div class="dashboard-grid">
+
+<!-- REGISTER FACE -->
+
+<div class="card">
+
+<h2>Register Face</h2>
+
+<label>Name</label>
+<input id="person-name" placeholder="Enter person name">
+
+<div id="capture-count">
+Captured: <span id="capture-number">0</span>
+</div>
+
+<div class="controls">
+<button class="primary" onclick="captureFace()">Capture Image</button>
+<button class="primary" id="upload-btn" onclick="uploadCapturedFaces()" disabled>
+Upload Faces
+</button>
+</div>
+
+<div id="captured-faces" class="face-grid"></div>
+
+</div>
+
+
+<!-- USERS -->
+
+<div class="card">
+
+<h2>Registered Users</h2>
+
+<button class="primary" onclick="loadUsers()">Refresh</button>
+
+<div id="user-list"></div>
+
+</div>
+
+</div>

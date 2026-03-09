@@ -2,387 +2,119 @@
 <html>
 
 <head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Face Recognition Dashboard</title>
 
-<style>
+<link rel="stylesheet" href="/frontend/css/dashboard.css">
 
-body{
-margin:0;
-font-family:Arial;
-background:#0f172a;
-color:white;
-}
-
-.header{
-background:#020617;
-padding:15px;
-font-size:22px;
-text-align:center;
-}
-
-.container{
-display:flex;
-height:calc(100vh - 60px);
-}
-
-/* LEFT PANEL */
-
-.left{
-width:30%;
-background:#1e293b;
-padding:15px;
-overflow:auto;
-}
-
-/* CENTER PANEL */
-
-.center{
-width:70%;
-padding:15px;
-position:relative;
-}
-
-video{
-width:100%;
-border-radius:10px;
-border:3px solid #334155;
-}
-
-canvas{
-position:absolute;
-top:15px;
-left:15px;
-pointer-events:none;
-}
-
-/* UI */
-
-button{
-padding:8px 12px;
-border:none;
-border-radius:6px;
-background:#3b82f6;
-color:white;
-cursor:pointer;
-margin-top:5px;
-}
-
-button:hover{
-background:#2563eb;
-}
-
-input{
-padding:6px;
-width:80%;
-margin-bottom:10px;
-}
-
-.face-grid img{
-width:70px;
-margin:4px;
-border-radius:5px;
-border:2px solid #475569;
-}
-
-.user-item{
-display:flex;
-justify-content:space-between;
-margin-bottom:6px;
-}
-
-.status{
-margin-top:10px;
-font-size:14px;
-color:#94a3b8;
-}
-
-</style>
+<script src="/frontend/js/api.js"></script>
+<script src="/frontend/js/device.js"></script>
+<script src="/frontend/js/recognition.js"></script>
 
 </head>
 
 <body>
 
-<div class="header">
-Face Recognition AI Dashboard
-</div>
+<div id="navbar"></div>
 
-<div class="container">
+<div class="layout">
 
-<!-- LEFT PANEL -->
+<div id="sidebar"></div>
 
-<div class="left">
-
-<h3>Register User</h3>
-
-<input id="username" placeholder="Enter name">
-
-<br>
-
-<button onclick="captureFace()">Capture Face</button>
-<button onclick="uploadFaces()">Upload</button>
-<button onclick="clearCaptured()">Clear Captured</button>
-
-<div class="face-grid" id="faceGrid"></div>
-
-<hr>
-
-<h3>Registered Users</h3>
-
-<div id="userList"></div>
-
-<div class="status" id="liveResults">
-No faces detected
-</div>
-
-</div>
-
-<!-- CENTER PANEL -->
-
-<div class="center">
-
-<h3>Live Recognition</h3>
-
-<video id="video" autoplay muted></video>
-
-<canvas id="overlay"></canvas>
-
-</div>
+<div id="page-content" class="page-content"></div>
 
 </div>
 
 <script>
 
-/* ---------- GLOBAL ---------- */
+async function loadComponent(id,path){
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("overlay");
-const ctx = canvas.getContext("2d");
+try{
 
-let capturedImages = [];
-let detectionEnabled = true;
+const res = await fetch(path)
 
-/* ---------- CAMERA ---------- */
+if(!res.ok) throw new Error("Failed to load component")
 
-navigator.mediaDevices.getUserMedia({video:true})
-.then(stream=>{
-video.srcObject = stream;
-});
+const html = await res.text()
 
-/* ---------- VIDEO SIZE ---------- */
+document.getElementById(id).innerHTML = html
 
-video.addEventListener("loadedmetadata",()=>{
+}catch(err){
 
-canvas.width = video.videoWidth;
-canvas.height = video.videoHeight;
-
-canvas.style.width = video.clientWidth + "px";
-canvas.style.height = video.clientHeight + "px";
-
-});
-
-/* ---------- CAPTURE FACE ---------- */
-
-function captureFace(){
-
-const temp = document.createElement("canvas");
-
-temp.width = video.videoWidth;
-temp.height = video.videoHeight;
-
-const ctx2 = temp.getContext("2d");
-
-ctx2.drawImage(video,0,0);
-
-temp.toBlob(blob=>{
-
-capturedImages.push(blob);
-
-const img=document.createElement("img");
-img.src=URL.createObjectURL(blob);
-
-document.getElementById("faceGrid").appendChild(img);
-
-},"image/jpeg");
+console.error(err)
 
 }
 
-/* ---------- REGISTER USER ---------- */
-
-async function uploadFaces(){
-
-const name=document.getElementById("username").value;
-
-if(!name){
-alert("Enter user name");
-return;
 }
 
-if(capturedImages.length===0){
-alert("Capture faces first");
-return;
-}
+async function loadPage(page){
 
-const formData=new FormData();
+try{
 
-formData.append("name",name);
+const res = await fetch(`/frontend/pages/${page}.html`)
 
-capturedImages.forEach(img=>{
-formData.append("images",img);
-});
+if(!res.ok) throw new Error("Page load failed")
 
-await fetch("/register-user",{
-method:"POST",
-body:formData
-});
+const html = await res.text()
 
-await fetch("/reload_embeddings",{method:"POST"});
+document.getElementById("page-content").innerHTML = html
 
-capturedImages=[];
-document.getElementById("faceGrid").innerHTML="";
+initializePage(page)
 
-loadUsers();
+}catch(err){
+
+console.error(err)
 
 }
 
-/* ---------- CLEAR CAPTURE ---------- */
+}
 
-function clearCaptured(){
+function initializePage(page){
 
-capturedImages=[];
-document.getElementById("faceGrid").innerHTML="";
+if(page === "device_setup"){
+
+if(typeof loadDevices === "function"){
+loadDevices()
+}
 
 }
 
-/* ---------- USERS ---------- */
+if(page === "live_recognition"){
 
-async function loadUsers(){
+if(typeof startStream === "function"){
+startStream()
+}
 
-const res=await fetch("/user_list");
-const data=await res.json();
-
-const list=document.getElementById("userList");
-
-list.innerHTML="";
-
-data.users.forEach(u=>{
-
-const div=document.createElement("div");
-
-div.className="user-item";
-
-div.innerHTML=`${u}
-<button onclick="deleteUser('${u}')">Delete</button>`;
-
-list.appendChild(div);
-
-});
+if(typeof loadUsers === "function"){
+loadUsers()
+}
 
 }
 
-async function deleteUser(name){
+if(page === "logs"){
 
-await fetch("/user/"+name,{
-method:"DELETE"
-});
-
-await fetch("/reload_embeddings",{method:"POST"});
-
-loadUsers();
+if(typeof fetchRecognitionLogs === "function"){
+fetchRecognitionLogs()
+}
 
 }
 
-/* ---------- DRAW FACES ---------- */
+}
 
-function drawFaces(faces){
+async function init(){
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
+await loadComponent("navbar","/frontend/components/navbar.html")
 
-faces.forEach(face=>{
+await loadComponent("sidebar","/frontend/components/sidebar.html")
 
-const b = face.box;
-
-const x = b.x1;
-const y = b.y1;
-const w = b.x2 - b.x1;
-const h = b.y2 - b.y1;
-
-ctx.strokeStyle="lime";
-ctx.lineWidth=3;
-
-ctx.strokeRect(x,y,w,h);
-
-ctx.fillStyle="lime";
-ctx.font="16px Arial";
-
-ctx.fillText(face.label+" "+face.score.toFixed(2),x,y-5);
-
-});
+loadPage("device_setup")
 
 }
 
-/* ---------- LIVE RESULT PANEL ---------- */
-
-function updateResults(faces){
-
-const box=document.getElementById("liveResults");
-
-if(!faces.length){
-box.innerHTML="No faces detected";
-return;
-}
-
-let txt="Detected:<br>";
-
-faces.forEach(f=>{
-txt += f.label + " ("+f.score.toFixed(2)+")<br>";
-});
-
-box.innerHTML=txt;
-
-}
-
-/* ---------- LIVE DETECTION ---------- */
-
-setInterval(async()=>{
-
-if(!detectionEnabled) return;
-
-const temp=document.createElement("canvas");
-
-temp.width=video.videoWidth;
-temp.height=video.videoHeight;
-
-const ctx2=temp.getContext("2d");
-
-ctx2.drawImage(video,0,0);
-
-temp.toBlob(async blob=>{
-
-const formData=new FormData();
-
-formData.append("image",blob);
-
-const res=await fetch("/upload",{
-method:"POST",
-body:formData
-});
-
-const data=await res.json();
-
-if(data.success){
-
-drawFaces(data.result.faces);
-updateResults(data.result.faces);
-
-}
-
-},"image/jpeg");
-
-},500);
-
-/* ---------- INIT ---------- */
-
-loadUsers();
+init()
 
 </script>
 
