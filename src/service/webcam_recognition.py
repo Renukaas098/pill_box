@@ -1,66 +1,17 @@
 import logging
-
 import cv2
-import numpy as np
-from keras_facenet import FaceNet
-from numpy.linalg import norm
-from ultralytics import YOLO
 import time
-from PIL import Image
 
-from src.utils.config import ConfigLoader
+from src.service.face_recognition import RecognitionService
 
 logger = logging.getLogger("WebcamRecognition")
 
-
 class WebcamRecognition:
-    def __init__(self, embedding_db_path, threshold=0.7):
 
-        config = ConfigLoader()
+    def __init__(self, embedding_db_path):
 
-        logger.info("Loading YOLO model...")
-        self.detector = YOLO(config.get_yolo_model_path())
-
-        logger.info("Loading FaceNet...")
-        self.embedder = FaceNet()
-
-        logger.info("Loading embedding database...")
-        data = np.load(embedding_db_path, allow_pickle=True)
-
-        self.known_embeddings = data["arr_0"]
-        self.known_labels = data["arr_1"]
-
-        self.threshold = threshold
-        self.conf_thres = 0.8
-
-    # --------------------------------------------------
-
-    @staticmethod
-    def cosine_similarity(a, b):
-        return np.dot(a, b) / (norm(a) * norm(b))
-
-    # --------------------------------------------------
-
-    def recognize_face(self, face):
-
-        emb = self.embedder.embeddings([face])[0]
-
-        best_score = -1
-        best_label = "Unknown"
-
-        for known_emb, label in zip(self.known_embeddings, self.known_labels):
-            score = self.cosine_similarity(emb, known_emb)
-
-            if score > best_score:
-                best_score = score
-                best_label = label
-
-        if best_score < self.threshold:
-            best_label = "Unknown"
-
-        return best_label, best_score
-
-    # --------------------------------------------------
+        logger.info("Initializing Recognition Service...")
+        self.service = RecognitionService(embedding_db_path)
 
     def run(self):
 
@@ -68,8 +19,15 @@ class WebcamRecognition:
 
         logger.info("Webcam recognition started — press Q to exit")
 
+        process_interval = 0.5   # run detection every 0.5 sec
+        box_timeout = 0.6        # remove box if not updated
+
         last_process_time = 0
-        process_interval = 0.25  # 4 FPS
+        last_detection_time = 0
+
+        prev_box = None
+        label = "Unknown"
+        score = 0
 
         while True:
 
@@ -79,43 +37,44 @@ class WebcamRecognition:
 
             current_time = time.time()
 
-            # Only process every interval
+            # Run recognition
             if current_time - last_process_time >= process_interval:
 
                 last_process_time = current_time
 
-                results = self.detector(frame, conf=self.conf_thres, verbose=False)
+                result = self.service.recognize_from_frame(frame)
 
-                if results[0].boxes is not None:
+                if result["box"] is not None:
 
-                    boxes = results[0].boxes.xyxy.cpu().numpy()
+                    prev_box = result["box"]
+                    label = result["label"]
+                    score = result["score"]
+                    last_detection_time = current_time
 
-                    for box in boxes:
+            # Remove stale box
+            if current_time - last_detection_time > box_timeout:
+                prev_box = None
 
-                        x1, y1, x2, y2 = map(int, box)
+            # Draw box
+            if prev_box is not None:
 
-                        face = frame[y1:y2, x1:x2]
+                x1 = prev_box["x1"]
+                y1 = prev_box["y1"]
+                x2 = prev_box["x2"]
+                y2 = prev_box["y2"]
 
-                        if face.size == 0:
-                            continue
+                text = f"{label} ({score:.2f})"
 
-                        face = cv2.resize(face, (160, 160))
-                        face = face[:, :, ::-1]
-
-                        label, score = self.recognize_face(face)
-
-                        text = f"{label} ({score:.2f})"
-
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(
-                            frame,
-                            text,
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
-                            (0, 255, 0),
-                            2,
-                        )
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
+                cv2.putText(
+                    frame,
+                    text,
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0,255,0),
+                    2
+                )
 
             cv2.imshow("YOLO Face Recognition", frame)
 

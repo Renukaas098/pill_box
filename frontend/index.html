@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Face Recognition Dashboard</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+background:#0f172a;
+color:white;
+}
+
+.header{
+background:#020617;
+padding:15px;
+font-size:22px;
+text-align:center;
+}
+
+.container{
+display:flex;
+height:calc(100vh - 60px);
+}
+
+/* LEFT PANEL */
+
+.left{
+width:30%;
+background:#1e293b;
+padding:15px;
+overflow:auto;
+}
+
+/* CENTER PANEL */
+
+.center{
+width:70%;
+padding:15px;
+position:relative;
+}
+
+video{
+width:100%;
+border-radius:10px;
+border:3px solid #334155;
+}
+
+canvas{
+position:absolute;
+top:15px;
+left:15px;
+pointer-events:none;
+}
+
+/* UI */
+
+button{
+padding:8px 12px;
+border:none;
+border-radius:6px;
+background:#3b82f6;
+color:white;
+cursor:pointer;
+margin-top:5px;
+}
+
+button:hover{
+background:#2563eb;
+}
+
+input{
+padding:6px;
+width:80%;
+margin-bottom:10px;
+}
+
+.face-grid img{
+width:70px;
+margin:4px;
+border-radius:5px;
+border:2px solid #475569;
+}
+
+.user-item{
+display:flex;
+justify-content:space-between;
+margin-bottom:6px;
+}
+
+.status{
+margin-top:10px;
+font-size:14px;
+color:#94a3b8;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+Face Recognition AI Dashboard
+</div>
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+
+<div class="left">
+
+<h3>Register User</h3>
+
+<input id="username" placeholder="Enter name">
+
+<br>
+
+<button onclick="captureFace()">Capture Face</button>
+<button onclick="uploadFaces()">Upload</button>
+<button onclick="clearCaptured()">Clear Captured</button>
+
+<div class="face-grid" id="faceGrid"></div>
+
+<hr>
+
+<h3>Registered Users</h3>
+
+<div id="userList"></div>
+
+<div class="status" id="liveResults">
+No faces detected
+</div>
+
+</div>
+
+<!-- CENTER PANEL -->
+
+<div class="center">
+
+<h3>Live Recognition</h3>
+
+<video id="video" autoplay muted></video>
+
+<canvas id="overlay"></canvas>
+
+</div>
+
+</div>
+
+<script>
+
+/* ---------- GLOBAL ---------- */
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+
+let capturedImages = [];
+let detectionEnabled = true;
+
+/* ---------- CAMERA ---------- */
+
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+video.srcObject = stream;
+});
+
+/* ---------- VIDEO SIZE ---------- */
+
+video.addEventListener("loadedmetadata",()=>{
+
+canvas.width = video.videoWidth;
+canvas.height = video.videoHeight;
+
+canvas.style.width = video.clientWidth + "px";
+canvas.style.height = video.clientHeight + "px";
+
+});
+
+/* ---------- CAPTURE FACE ---------- */
+
+function captureFace(){
+
+const temp = document.createElement("canvas");
+
+temp.width = video.videoWidth;
+temp.height = video.videoHeight;
+
+const ctx2 = temp.getContext("2d");
+
+ctx2.drawImage(video,0,0);
+
+temp.toBlob(blob=>{
+
+capturedImages.push(blob);
+
+const img=document.createElement("img");
+img.src=URL.createObjectURL(blob);
+
+document.getElementById("faceGrid").appendChild(img);
+
+},"image/jpeg");
+
+}
+
+/* ---------- REGISTER USER ---------- */
+
+async function uploadFaces(){
+
+const name=document.getElementById("username").value;
+
+if(!name){
+alert("Enter user name");
+return;
+}
+
+if(capturedImages.length===0){
+alert("Capture faces first");
+return;
+}
+
+const formData=new FormData();
+
+formData.append("name",name);
+
+capturedImages.forEach(img=>{
+formData.append("images",img);
+});
+
+await fetch("/register-user",{
+method:"POST",
+body:formData
+});
+
+await fetch("/reload_embeddings",{method:"POST"});
+
+capturedImages=[];
+document.getElementById("faceGrid").innerHTML="";
+
+loadUsers();
+
+}
+
+/* ---------- CLEAR CAPTURE ---------- */
+
+function clearCaptured(){
+
+capturedImages=[];
+document.getElementById("faceGrid").innerHTML="";
+
+}
+
+/* ---------- USERS ---------- */
+
+async function loadUsers(){
+
+const res=await fetch("/user_list");
+const data=await res.json();
+
+const list=document.getElementById("userList");
+
+list.innerHTML="";
+
+data.users.forEach(u=>{
+
+const div=document.createElement("div");
+
+div.className="user-item";
+
+div.innerHTML=`${u}
+<button onclick="deleteUser('${u}')">Delete</button>`;
+
+list.appendChild(div);
+
+});
+
+}
+
+async function deleteUser(name){
+
+await fetch("/user/"+name,{
+method:"DELETE"
+});
+
+await fetch("/reload_embeddings",{method:"POST"});
+
+loadUsers();
+
+}
+
+/* ---------- DRAW FACES ---------- */
+
+function drawFaces(faces){
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+faces.forEach(face=>{
+
+const b = face.box;
+
+const x = b.x1;
+const y = b.y1;
+const w = b.x2 - b.x1;
+const h = b.y2 - b.y1;
+
+ctx.strokeStyle="lime";
+ctx.lineWidth=3;
+
+ctx.strokeRect(x,y,w,h);
+
+ctx.fillStyle="lime";
+ctx.font="16px Arial";
+
+ctx.fillText(face.label+" "+face.score.toFixed(2),x,y-5);
+
+});
+
+}
+
+/* ---------- LIVE RESULT PANEL ---------- */
+
+function updateResults(faces){
+
+const box=document.getElementById("liveResults");
+
+if(!faces.length){
+box.innerHTML="No faces detected";
+return;
+}
+
+let txt="Detected:<br>";
+
+faces.forEach(f=>{
+txt += f.label + " ("+f.score.toFixed(2)+")<br>";
+});
+
+box.innerHTML=txt;
+
+}
+
+/* ---------- LIVE DETECTION ---------- */
+
+setInterval(async()=>{
+
+if(!detectionEnabled) return;
+
+const temp=document.createElement("canvas");
+
+temp.width=video.videoWidth;
+temp.height=video.videoHeight;
+
+const ctx2=temp.getContext("2d");
+
+ctx2.drawImage(video,0,0);
+
+temp.toBlob(async blob=>{
+
+const formData=new FormData();
+
+formData.append("image",blob);
+
+const res=await fetch("/upload",{
+method:"POST",
+body:formData
+});
+
+const data=await res.json();
+
+if(data.success){
+
+drawFaces(data.result.faces);
+updateResults(data.result.faces);
+
+}
+
+},"image/jpeg");
+
+},500);
+
+/* ---------- INIT ---------- */
+
+loadUsers();
+
+</script>
+
+</body>
+</html>

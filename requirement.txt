@@ -8,3 +8,6 @@ scipy==1.15.3
 opencv-python==4.13.0.92
 uv==0.10.2
 ultralytics==8.4.12
+fastapi==0.135.1
+python-multipart==0.0.22
+uvicorn==0.41.0

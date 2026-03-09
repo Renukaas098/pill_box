@@ -34,3 +34,9 @@ python main.py recognize --image "src\dataset\Alvaro Morte\Alvaro Morte1_152.jpg
 # Testing with webcam
 
 python main.py webcam
+
+
+DELETE /user/{name}
+POST   /reload_embeddings
+GET    /detection_log
+GET    /model_status
