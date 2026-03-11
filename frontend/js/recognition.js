@@ -131,13 +131,20 @@ async function startStream() {
     video.srcObject = stream
 
     video.onloadedmetadata = () => {
-      canvas.width  = video.videoWidth
-      canvas.height = video.videoHeight
-
-      // FIX: keep canvas overlay pixel-perfect after metadata loads
+      // Set canvas internal size to video display size (not natural resolution)
+      // This is what drawFaces now expects
+      canvas.width  = video.clientWidth
+      canvas.height = video.clientHeight
       canvas.style.width  = video.clientWidth  + "px"
       canvas.style.height = video.clientHeight + "px"
     }
+
+    // Re-sync canvas if window resizes (video CSS size changes)
+    window.addEventListener("resize", () => {
+      if (!video.videoWidth) return
+      canvas.width  = video.clientWidth
+      canvas.height = video.clientHeight
+    })
 
     detectInterval = setInterval(sendFrame, 300)
     showStatus("Camera started")
@@ -187,10 +194,22 @@ async function sendFrame() {
 // ─── DRAW BOXES ───────────────────────────────────────────
 function drawFaces(faces) {
   if (!ctx) return
+
+  // Sync canvas internal resolution to match video display size exactly
+  // so drawn coordinates always align with what the user sees
+  const displayW = video.clientWidth
+  const displayH = video.clientHeight
+
+  if (canvas.width !== displayW || canvas.height !== displayH) {
+    canvas.width  = displayW
+    canvas.height = displayH
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-  const scaleX = canvas.width  / video.videoWidth
-  const scaleY = canvas.height / video.videoHeight
+  // Backend returns coords in natural video resolution — scale to display size
+  const scaleX = displayW / video.videoWidth
+  const scaleY = displayH / video.videoHeight
 
   faces.forEach(face => {
     const b = face.box
@@ -199,13 +218,19 @@ function drawFaces(faces) {
     const w = (b.x2 - b.x1) * scaleX
     const h = (b.y2 - b.y1) * scaleY
 
-    ctx.strokeStyle = "lime"
+    ctx.strokeStyle = "#00ff41"
     ctx.lineWidth   = 2
     ctx.strokeRect(x, y, w, h)
 
-    ctx.fillStyle = "lime"
-    ctx.font      = "16px Arial"
-    ctx.fillText(face.label + " " + face.score.toFixed(2), x, y - 5)
+    // label background for readability
+    const label = face.label + " " + face.score.toFixed(2)
+    ctx.font = "14px monospace"
+    const textW = ctx.measureText(label).width
+    ctx.fillStyle = "rgba(0,0,0,0.55)"
+    ctx.fillRect(x, y - 20, textW + 8, 20)
+
+    ctx.fillStyle = "#00ff41"
+    ctx.fillText(label, x + 4, y - 5)
   })
 }
 
