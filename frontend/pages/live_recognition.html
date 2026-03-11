@@ -1,89 +1,81 @@
 <div id="status-bar" class="status-bar">
-System ready
+  System ready
 </div>
 
 <div class="dashboard-grid">
 
-<!-- CAMERA -->
+  <!-- CAMERA -->
+  <div class="card">
 
-<div class="card">
+    <h2>Live Recognition</h2>
 
-<h2>Live Recognition</h2>
+    <div class="camera-container">
+      <video id="video" autoplay></video>
+      <canvas id="overlay"></canvas>
+    </div>
 
-<div class="camera-container">
-<video id="video" autoplay></video>
-<canvas id="overlay"></canvas>
-</div>
+    <!-- FIX: Removed "Capture Face" button from here — only Start/Stop belong here -->
+    <div class="controls">
+      <button class="primary" onclick="startStream()">Start</button>
+      <button class="primary" onclick="stopStream()">Stop</button>
+    </div>
 
-<div class="controls">
-<button class="primary" onclick="startStream()">Start</button>
-<button class="primary" onclick="stopStream()">Stop</button>
-<button class="primary" onclick="captureFace()">Capture Face</button>
-</div>
+  </div>
 
-</div>
+  <!-- DETECTION TABLE -->
+  <div class="card">
 
+    <h2>Detected People</h2>
 
-<!-- DETECTION TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody id="recognition-table"></tbody>
+    </table>
 
-<div class="card">
-
-<h2>Detected People</h2>
-
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Confidence</th>
-</tr>
-</thead>
-
-<tbody id="recognition-table"></tbody>
-
-</table>
+  </div>
 
 </div>
-
-</div>
-
 
 <div class="dashboard-grid">
 
-<!-- REGISTER FACE -->
+  <!-- REGISTER FACE -->
+  <div class="card">
 
-<div class="card">
+    <h2>Register Face</h2>
 
-<h2>Register Face</h2>
+    <label>Name</label>
+    <input id="person-name" placeholder="Enter person name">
 
-<label>Name</label>
-<input id="person-name" placeholder="Enter person name">
+    <div id="capture-count">
+      Captured: <span id="capture-number">0</span>
+    </div>
 
-<div id="capture-count">
-Captured: <span id="capture-number">0</span>
-</div>
+    <!-- Capture button stays here in the Register section only -->
+    <div class="controls">
+      <button class="primary" onclick="captureFace()">Capture Image</button>
+      <button class="primary" id="upload-btn" onclick="uploadCapturedFaces()" disabled>
+        Upload Faces
+      </button>
+    </div>
 
-<div class="controls">
-<button class="primary" onclick="captureFace()">Capture Image</button>
-<button class="primary" id="upload-btn" onclick="uploadCapturedFaces()" disabled>
-Upload Faces
-</button>
-</div>
+    <div id="captured-faces" class="face-grid"></div>
 
-<div id="captured-faces" class="face-grid"></div>
+  </div>
 
-</div>
+  <!-- USERS -->
+  <div class="card">
 
+    <h2>Registered Users</h2>
 
-<!-- USERS -->
+    <button class="primary" onclick="loadUsers()">Refresh</button>
 
-<div class="card">
+    <div id="user-list"></div>
 
-<h2>Registered Users</h2>
-
-<button class="primary" onclick="loadUsers()">Refresh</button>
-
-<div id="user-list"></div>
-
-</div>
+  </div>
 
 </div>

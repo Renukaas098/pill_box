@@ -1,20 +1,77 @@
 <div class="card">
 
-<h2>Recognition Logs</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+    <h2 style="margin:0">Recognition Logs</h2>
+    <button class="primary" onclick="fetchRecognitionLogs()">Refresh</button>
+  </div>
 
-<table>
+  <div id="log-status" style="font-size:13px;opacity:0.6;margin-bottom:10px">Loading...</div>
 
-<thead>
-<tr>
-<th>Time</th>
-<th>Camera</th>
-<th>User</th>
-<th>Confidence</th>
-</tr>
-</thead>
-
-<tbody id="log-table"></tbody>
-
-</table>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Camera</th>
+        <th>User</th>
+        <th>Confidence</th>
+      </tr>
+    </thead>
+    <tbody id="log-table"></tbody>
+  </table>
 
 </div>
+
+<script>
+// FIX: fetchRecognitionLogs was referenced in index.html initializePage() but never defined
+async function fetchRecognitionLogs() {
+  const tbody  = document.getElementById("log-table")
+  const status = document.getElementById("log-status")
+
+  status.innerText = "Loading..."
+  tbody.innerHTML  = ""
+
+  try {
+    const res  = await fetch("/detection_log")
+    const data = await res.json()
+
+    if (!data.success || !data.logs || !data.logs.length) {
+      status.innerText = "No logs found"
+      tbody.innerHTML  = `<tr><td colspan="4" style="opacity:0.5;text-align:center">No detection events yet</td></tr>`
+      return
+    }
+
+    status.innerText = `${data.logs.length} entries`
+
+    data.logs.forEach(log => {
+      const row = document.createElement("tr")
+
+      const time = log.timestamp
+        ? new Date(log.timestamp).toLocaleString()
+        : (log.time || "—")
+
+      const conf = log.confidence != null
+        ? parseFloat(log.confidence).toFixed(2)
+        : (log.score != null ? parseFloat(log.score).toFixed(2) : "—")
+
+      const isUnknown = (log.label || log.user || "").toLowerCase().includes("unknown")
+
+      row.innerHTML = `
+        <td>${time}</td>
+        <td>${log.camera || log.device || "—"}</td>
+        <td class="${isUnknown ? "unknown" : ""}">${log.label || log.user || "—"}</td>
+        <td>${conf}</td>
+      `
+
+      tbody.appendChild(row)
+    })
+
+  } catch (err) {
+    console.error(err)
+    status.innerText = "Failed to load logs"
+    tbody.innerHTML  = `<tr><td colspan="4" style="color:#ef4444">Error loading logs</td></tr>`
+  }
+}
+
+// Auto-load when page is injected
+fetchRecognitionLogs()
+</script>

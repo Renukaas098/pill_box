@@ -210,4 +210,6 @@ logs/
 src\processed\embeddings\faces-embeddings.npz
 src\processed\faces\faces-only-dataset.npz
 
+src\processed\embeddings\faces-embeddings.npz
+
 src\dataset\Jithu Tagore
