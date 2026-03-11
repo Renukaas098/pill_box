@@ -6,6 +6,8 @@ let detectInterval
 
 let capturedImages = []
 let isUploading = false
+let frameAbortController = null
+let isSendingFrame = false  // lock — only one frame in-flight at a time
 
 // ─── STATUS ───────────────────────────────────────────────
 function showStatus(msg) {
@@ -17,12 +19,31 @@ function showStatus(msg) {
 function pauseDetection() {
   clearInterval(detectInterval)
   detectInterval = null
+  isSendingFrame = false       // reset lock so it never gets stuck
+
+  if (frameAbortController) {
+    frameAbortController.abort()
+    frameAbortController = null
+  }
+
   if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  // Pause all video tracks so camera fully stops sending frames
+  if (stream) stream.getTracks().forEach(t => t.enabled = false)
+
+  // Visually blur the video to signal it's paused
+  if (video) video.style.filter = "blur(4px) brightness(0.5)"
 }
 
 function resumeDetection() {
+  // Re-enable video tracks
+  if (stream) stream.getTracks().forEach(t => t.enabled = true)
+
+  // Remove blur
+  if (video) video.style.filter = ""
+
   if (!detectInterval && stream) {
-    detectInterval = setInterval(sendFrame, 300)
+    detectInterval = setInterval(sendFrame, 333)
   }
 }
 
@@ -121,6 +142,13 @@ function hideUploadOverlay() {
 }
 
 // ─── CAMERA ───────────────────────────────────────────────
+function updateStreamButtons(running) {
+  const startBtn = document.getElementById("start-btn")
+  const stopBtn  = document.getElementById("stop-btn")
+  if (startBtn) startBtn.disabled = running
+  if (stopBtn)  stopBtn.disabled  = !running
+}
+
 async function startStream() {
   video  = document.getElementById("video")
   canvas = document.getElementById("overlay")
@@ -131,22 +159,20 @@ async function startStream() {
     video.srcObject = stream
 
     video.onloadedmetadata = () => {
-      // Set canvas internal size to video display size (not natural resolution)
-      // This is what drawFaces now expects
       canvas.width  = video.clientWidth
       canvas.height = video.clientHeight
       canvas.style.width  = video.clientWidth  + "px"
       canvas.style.height = video.clientHeight + "px"
     }
 
-    // Re-sync canvas if window resizes (video CSS size changes)
     window.addEventListener("resize", () => {
       if (!video.videoWidth) return
       canvas.width  = video.clientWidth
       canvas.height = video.clientHeight
     })
 
-    detectInterval = setInterval(sendFrame, 300)
+    detectInterval = setInterval(sendFrame, 333)
+    updateStreamButtons(true)
     showStatus("Camera started")
 
   } catch (err) {
@@ -157,38 +183,57 @@ async function startStream() {
 
 function stopStream() {
   if (stream) stream.getTracks().forEach(t => t.stop())
+  stream = null
   clearInterval(detectInterval)
+  detectInterval = null
   if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+  updateStreamButtons(false)
   showStatus("Camera stopped")
 }
 
 // ─── SEND FRAME ───────────────────────────────────────────
 async function sendFrame() {
+  if (isUploading)    return
+  if (isSendingFrame) return
   if (!video || video.videoWidth === 0) return
 
-  const temp  = document.createElement("canvas")
-  temp.width  = video.videoWidth
-  temp.height = video.videoHeight
+  isSendingFrame = true  // lock BEFORE toBlob — nothing else gets in
 
-  const tctx = temp.getContext("2d")
-  tctx.drawImage(video, 0, 0)
+  try {
+    const blob = await new Promise(resolve => {
+      const temp  = document.createElement("canvas")
+      temp.width  = video.videoWidth
+      temp.height = video.videoHeight
+      temp.getContext("2d").drawImage(video, 0, 0)
+      temp.toBlob(resolve, "image/jpeg")
+    })
 
-  temp.toBlob(async blob => {
+    if (!blob || isUploading) return  // check again after toBlob resolved
+
+    frameAbortController = new AbortController()
+
     const formData = new FormData()
     formData.append("image", blob)
 
-    try {
-      const res  = await fetch("/upload", { method: "POST", body: formData })
-      const data = await res.json()
+    const res  = await fetch("/upload", {
+      method: "POST",
+      body: formData,
+      signal: frameAbortController.signal
+    })
+    const data = await res.json()
 
-      if (data.success) {
-        drawFaces(data.result.faces)
-        updateDetectionList(data.result.faces)
-      }
-    } catch (err) {
-      console.error("Upload error:", err)
+    if (data.success) {
+      drawFaces(data.result.faces)
+      updateDetectionList(data.result.faces)
     }
-  }, "image/jpeg")
+
+  } catch (err) {
+    if (err.name === "AbortError") return
+    console.error("Frame error:", err)
+  } finally {
+    frameAbortController = null
+    isSendingFrame = false  // always unlock
+  }
 }
 
 // ─── DRAW BOXES ───────────────────────────────────────────
@@ -391,6 +436,7 @@ async function loadUsers() {
 }
 
 async function deleteUser(name) {
+  isUploading = true
   pauseDetection()
   showUploadOverlay(`Deleting "${name}"...`)
   setUploadProgress(20)
@@ -428,5 +474,6 @@ async function deleteUser(name) {
     showStatus("Delete error")
   } finally {
     resumeDetection()
+    isUploading = false
   }
 }

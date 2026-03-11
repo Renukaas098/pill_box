@@ -14,10 +14,9 @@
       <canvas id="overlay"></canvas>
     </div>
 
-    <!-- FIX: Removed "Capture Face" button from here — only Start/Stop belong here -->
     <div class="controls">
-      <button class="primary" onclick="startStream()">Start</button>
-      <button class="primary" onclick="stopStream()">Stop</button>
+      <button class="primary" id="start-btn" onclick="startStream()">Start</button>
+      <button class="primary" id="stop-btn"  onclick="stopStream()" disabled>Stop</button>
     </div>
 
   </div>
