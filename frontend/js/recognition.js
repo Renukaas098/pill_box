@@ -366,8 +366,6 @@ async function loadUsers() {
 }
 
 async function deleteUser(name) {
-  if (!confirm(`Delete user "${name}"?`)) return
-
   pauseDetection()
   showUploadOverlay(`Deleting "${name}"...`)
   setUploadProgress(20)
