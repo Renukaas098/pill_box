@@ -213,3 +213,7 @@ src\processed\faces\faces-only-dataset.npz
 src\processed\embeddings\faces-embeddings.npz
 
 src\dataset\Jithu Tagore
+# KiCad temp files
+*.lck
+#auto_saved_files#
+*-backups/
